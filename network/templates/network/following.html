@@ -1,0 +1,95 @@
+{% extends "network/page_layout.html" %}
+
+{% block body %} 
+    <h1 class="centered-text">Following</h1>
+    <div id="posts" class="center">
+        {% if not is_following %}
+            <h2 class="centered-text">Looks like you don't follow anyone.</h2>
+        {% endif %}
+    </div>
+    <script>
+        function load(number) {
+            fetch(`/fposts/${number}`)
+            .then(response => {
+                if (response.status === 404) {
+                  throw new Error("Page not found");
+                }
+                current_pg = number;
+                return response.json();
+            })
+            .then(posts => {
+                const next_li = document.querySelector("#next-li");
+                const low_nav = div.querySelector("#low-nav");
+                let last_user;
+                div.innerHTML = "";
+                posts.forEach((post, index) => {
+                    const post_user = post.user
+                    if (post_user != last_user) {
+                        const h = document.createElement("h1");
+                        const a = document.createElement("a");
+                        a.href = `{% url 'user' %}?name=${post.user}`;
+                        h.innerHTML = `${post.user}:`;
+                        a.appendChild(h);
+                        div.appendChild(a);
+                        last_user = post.user;
+                    }
+                    const date = get_date(post.date);
+                    const innerDiv = document.createElement("div");
+                    innerDiv.id = post.id;
+                    let likes = 0;
+                    for (let i = 0; i < post.likers.length; i++) likes++; 
+                    innerDiv.classList.add("gray-border");
+                    innerDiv.classList.add("animation");
+                    innerDiv.innerHTML = `
+                    <a><h3>${post.user}</h3></a>
+                    <p>${post.text}</p>
+                    <p class="gray-font" id="date">${date}</p>
+                    <p>
+                    `;
+                    const p = document.createElement("p");
+                    if (post.likers.includes(user)) {
+                        p.innerHTML = `{% load static %} <img src="{% static 'network/images/black-heart.png' %}" id="unlike-button" type="input" style="float: left;" alt="Like Button"> ${likes}`
+                    }
+                    else {
+                        p.innerHTML = `{% load static %} <img src="{% static 'network/images/heart.png' %}" id="like-button" type="input" style="float: left;" alt="Like Button"> ${likes}`
+                    }
+                    innerDiv.appendChild(p);
+                    div.appendChild(innerDiv);
+                });
+            });
+            window.scrollTo(0, 0);
+        }
+    </script>
+    {% block divListener %}
+    <script>
+        div.addEventListener("click", event => {
+            const element = event.target;
+            if (element.id === "like-button" || element.id === "unlike-button") {
+              const like = element.id === "like-button" ? true : false;
+              const p_text = element.id === "like-button" ? `{% load static %} <img src="{% static 'network/images/black-heart.png' %}" id="unlike-button" type="input" style="float: left;" alt="Like Button">` : `{% load static %} <img src="{% static 'network/images/heart.png' %}" id="like-button" type="input" style="float: left;" alt="Like Button">`;
+              const p = element.parentNode
+              const post_box = p.parentNode;
+
+              fetch(`/like/${post_box.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                  like: like
+                }),
+                headers: {"X-CSRFToken": csrftoken}
+              })
+              .then(response => {
+                if (response.status === 404) {
+                  throw new Error("Object not found");
+                }
+                return response.json();
+              })
+              .then(result => {
+                const likes = result["likes"];
+                p.innerHTML = p_text;
+                p.innerHTML += likes;
+              });
+            }
+          });
+    </script>
+    {% endblock %}
+{% endblock %}

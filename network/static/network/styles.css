@@ -1,0 +1,30 @@
+.center {
+    margin: auto;
+    width: 60%;
+    padding: 10px;
+}
+.gray-border {
+    border: 1px solid lightgray;
+}
+.gray-font {
+    color: gray;
+}
+
+.animation {
+    background-color: white;
+    color: black;
+    transition: 0.3s;
+}
+  
+.animation:hover {
+    background-color: darkblue;
+    color: white;
+  }
+
+.centered-text {
+    text-align: center;
+}
+
+.pagination {
+    justify-content: center;
+}

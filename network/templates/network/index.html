@@ -1,0 +1,68 @@
+{% extends "network/page_layout.html" %}
+
+{% block body %}
+    {% if user.is_authenticated %}
+        <div class="center gray-border" style="border: 1px solid lightgray;">
+            <form action="{% url 'index' %}" method="POST">
+
+                {% csrf_token %}
+
+                {{ form }}
+
+                <input id="post-submit" class="btn btn-primary" type="submit" value="Create New Post">
+            </form>
+        </div>
+    {% endif %}
+    <div class="center" id="posts"></div>
+    {% block load %}
+      <script>
+          function load(number) {
+            fetch(`/posts/${number}`)
+            .then(response => {
+                if (response.status === 404) {
+                  throw new Error("Page not found");
+                }
+                current_pg = number;
+                return response.json();
+            })
+            .then(posts => {
+              const next_li = document.querySelector("#next-li");
+              const low_nav = div.querySelector("#low-nav");
+              div.innerHTML = "";
+              posts.forEach(post => {
+                  const date = get_date(post.date);
+                  const innerDiv = document.createElement("div");
+                  innerDiv.classList.add("gray-border");
+                  innerDiv.classList.add("animation");
+                  innerDiv.id = post.id;
+                  let likes = 0;
+                  for (let i = 0; i < post.likers.length; i++) likes++; 
+                  innerDiv.innerHTML = `
+                  <a href="{% url 'user' %}?name=${post.user}"><h3>${post.user}</h3></a>
+                  <p id="post-text">${post.text}</p>
+                  <p class="gray-font" id="date">${date}</p>
+                  `;
+                  const p = document.createElement("p");
+                  if (post.likers.includes(user)) {
+                    p.innerHTML = `{% load static %} <img src="{% static 'network/images/black-heart.png' %}" id="unlike-button" type="input" style="float: left;" alt="Like Button"> ${likes}`
+                  }
+                  else {
+                    p.innerHTML = `{% load static %} <img src="{% static 'network/images/heart.png' %}" id="like-button" type="input" style="float: left;" alt="Like Button"> ${likes}`
+                  }
+                  innerDiv.appendChild(p);
+                  if (user === post.user) {
+                    const edit_button = document.createElement("button");
+                    edit_button.id = "edit_btn";
+                    edit_button.classList.add("btn");
+                    edit_button.classList.add("btn-primary");
+                    edit_button.innerHTML = "Edit Page";
+                    innerDiv.appendChild(edit_button);
+                  }
+                  div.appendChild(innerDiv);
+                });
+            });
+            window.scrollTo(0, 0);
+          }
+      </script>
+    {% endblock %}
+{% endblock %}

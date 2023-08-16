@@ -1,0 +1,102 @@
+{% extends "network/page_layout.html" %}
+
+{% block body %} 
+    <h1 id="top">{{ profiled_user.username }}</h1>
+    <p style="float: left; padding-right: 5px;" id="followers">Followers: {{ followers }}</p>
+    <p>Followed: {{ followed }}</p>
+    
+    {% if user.is_authenticated and user.id is not profiled_user.id %}
+        {% if is_followed %}
+            <button id="unfollow" class="btn btn-secondary">Unfollow</button>
+            <button id="follow" class="btn btn-primary" style="display: none">Follow</button>
+        {% else %}
+            <button id="unfollow" class="btn btn-secondary" style="display: none">Unfollow</button>
+            <button id="follow" class="btn btn-primary">Follow</button>
+        {% endif %}
+    {% endif %}
+    <div id="posts" class="center"></div>
+    {% block load %}
+        <script>
+            const follow_button = document.querySelector("#follow");
+            const unfollow_button = document.querySelector("#unfollow");
+            
+            follow_button.addEventListener('click', () => follow(true));
+            unfollow_button.addEventListener('click', () => follow(false));
+
+            function follow(follow) {
+                fetch('/follow/{{ profiled_user.username }}', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        follow: follow
+                    }),
+                    headers: {"X-CSRFToken": csrftoken}
+                })
+                .then(response => response.json())
+                .then(result => {
+                    console.log(result);
+                });
+                const followers_text = document.querySelector("#followers");
+                const followers = Number(followers_text.innerHTML.split(" ")[1]);
+                if (follow) {
+                    followers_text.innerHTML = `Followers: ${followers + 1}`;
+                    follow_button.style.display = "none";
+                    unfollow_button.style.display = "block";
+                }
+                else {
+                    followers_text.innerHTML = `Followers: ${followers - 1}`;
+                    follow_button.style.display = "block";
+                    unfollow_button.style.display = "none";
+                }
+            }
+
+            function load(number) {
+                fetch(`/posts/${number}?user={{ profiled_user.username }}`)
+                .then(response => {
+                    if (response.status === 404) {
+                        throw new Error("Page not found");
+                    }
+                    current_pg = number;
+                    return response.json();
+                })
+                .then(posts => {
+                    const next_li = document.querySelector("#next-li");
+                    const low_nav = div.querySelector("#low-nav");
+                    div.innerHTML = "";
+                    posts.forEach(post => {
+                        const date = get_date(post.date);
+                        const innerDiv = document.createElement("div");
+                        innerDiv.classList.add("gray-border");
+                        innerDiv.classList.add("animation");
+                        innerDiv.id = post.id;
+                        let likes = 0;
+                        for (let i = 0; i < post.likers.length; i++) likes++; 
+                        innerDiv.innerHTML = `
+                        <a><h3>${post.user}</h3></a>
+                        <p id="post-text">${post.text}</p>
+                        <p class="gray-font" id="date">${date}</p>
+                        <p>
+                        `;
+                        const p = document.createElement("p");
+                        if (post.likers.includes(user)) {
+                            p.innerHTML = `{% load static %} <img src="{% static 'network/images/black-heart.png' %}" id="unlike-button" type="input" style="float: left;" alt="Like Button"> ${likes}`
+                        }
+                        else {
+                            p.innerHTML = `{% load static %} <img src="{% static 'network/images/heart.png' %}" id="like-button" type="input" style="float: left;" alt="Like Button"> ${likes}`
+                        }
+                        innerDiv.appendChild(p);
+                        if (user === post.user) {
+                            const edit_button = document.createElement("edit_button");
+                            edit_button.id = "edit-btn";
+                            edit_button.classList.add("btn");
+                            edit_button.classList.add("btn-primary");
+                            edit_button.innerHTML = "Edit Page";
+                            innerDiv.appendChild(edit_button);
+                        }
+                        div.appendChild(innerDiv);
+                    });
+                });
+                window.scrollTo(0, 0);
+            }
+        </script>
+    {% endblock %}
+{% endblock %}

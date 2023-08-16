@@ -1,0 +1,166 @@
+{% extends "network/layout.html" %}
+
+{% block headScript %}
+    <script>
+        var user = "{{ user.username }}";
+        function get_date(timestamp) {
+            const proto_year = Number(timestamp.slice(0, 4));
+            const proto_month = Number(timestamp.slice(5, 7)) - 1;
+            const proto_day = Number(timestamp.slice(8, 10));
+            const proto_hour = Number(timestamp.slice(11 ,13));
+            const proto_minutes = Number(timestamp.slice(14, 16));
+            const proto_seconds = Number(timestamp.slice(17, 19));
+            const date = new Date(proto_year, proto_month, proto_day, proto_hour, proto_minutes, proto_seconds);
+            let months = new Map();
+            months.set(0, 'Jan.');
+            months.set(1, "Feb.");
+            months.set(2, "Mar.");
+            months.set(3, "Apr.");
+            months.set(4, "May.");
+            months.set(5, "Jun.");
+            months.set(6, "Jul.");
+            months.set(7, "Aug.");
+            months.set(8, "Sep.");
+            months.set(9, "Oct.");
+            months.set(10, "Nov.");
+            months.set(11, "Dec.");
+            let month = months.get(date.getMonth());
+            let day = date.getDate();
+            let year = date.getFullYear();
+            let hour = date.getHours();
+            let period = "";
+            if (hour >= 0 && hour < 12) {
+                period = "a.m.";
+                if (hour == 0) {
+                hour = 12;
+                }
+            }
+            else if (hour >= 12) {
+                period = "p.m.";
+                hour -= 12;
+            }
+            let minutes = date.getMinutes();
+            if (minutes < 10) {
+                minutes = `0${minutes}`;
+            }
+            const time = month + " " + day + " " + year + ", " + hour + ":" + minutes + " " + period;
+            return time;
+        }
+    </script>
+{% endblock %}
+
+{% block loader %}
+    <script>
+        document.addEventListener("DOMContentLoaded", () => load(1));
+    </script>
+{% endblock %}
+{% block paginator %}
+    <nav class="center" aria-label="Page navigation example" id="low-nav">
+        <ul class="pagination" id="paginator">
+        <li class="page-item">
+            <a class="page-link" aria-label="Previous" id="prev-button">
+            <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% for i in pages_num|get_range %}
+            <li class="page-item"><a class="page-link page-button" id="{{ forloop.counter }}">{{ forloop.counter }}</a></li>
+        {% endfor %}
+        <li class="page-item" id="next-li">
+            <a class="page-link" aria-label="Next" id="next-button">
+            <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        </ul>
+    </nav>
+{% endblock %}
+{% block vars %}
+    <script>
+        var current_pg = 1;
+        const csrftoken = Cookies.get('csrftoken')
+        const paginator = document.querySelector("#paginator");
+        const div = document.querySelector("#posts");
+
+        paginator.querySelector("#prev-button").addEventListener("click", () => load(current_pg - 1));
+        paginator.querySelector("#next-button").addEventListener("click", () => load(current_pg + 1));
+
+        paginator.querySelectorAll(".page-button").forEach(button => {
+        button.onclick = () => load(button.id);
+        });
+    </script>
+{% endblock %}
+{% block divListener %}
+    <script>
+        div.addEventListener("click", event => {
+            const element = event.target;
+            if (element.id === "edit_btn") {
+                const post_box = element.parentNode;
+                const post_text = post_box.querySelector("#post-text");
+                const text_box = document.createElement("textarea");
+                const save = document.createElement("button");
+                text_box.id = "text-box"; 
+                save.classList.add("btn");
+                save.classList.add("btn-primary");
+                save.id = "save-btn";
+                save.innerHTML = "Save";
+                element.remove();
+                post_box.replaceChild(text_box, post_text);
+                post_box.appendChild(save);
+            }
+            else if (element.id === "save-btn") {
+                const post_box = element.parentNode;
+                const text_box = post_box.querySelector("textarea");
+                const post_text = document.createElement("p");
+                const edit_button = document.createElement("button");
+                const text = text_box.value;
+                
+                fetch("/edit", {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        text: text,
+                        id: post_box.id
+                    }),
+                    headers: {"X-CSRFToken": csrftoken}
+                })
+                .then(response => response.json())
+                .then(result => {
+                    console.log(result);
+                });
+
+                edit_button.innerHTML = "Edit Post";
+                edit_button.id = "edit_btn";
+                edit_button.classList.add("btn");
+                edit_button.classList.add("btn-primary");
+                post_text.id = "post-text";
+                post_text.innerHTML = text;
+                element.remove();
+                post_box.replaceChild(post_text, text_box);
+                post_box.appendChild(edit_button);
+            }
+            if (element.id === "like-button" || element.id === "unlike-button") {
+                const like = element.id === "like-button" ? true : false;
+                const p_text = element.id === "like-button" ? `{% load static %} <img src="{% static 'network/images/black-heart.png' %}" id="unlike-button" type="input" style="float: left;" alt="Like Button">` : `{% load static %} <img src="{% static 'network/images/heart.png' %}" id="like-button" type="input" style="float: left;" alt="Like Button">`;
+                const p = element.parentNode;
+                const post_box = p.parentNode;
+
+                fetch(`/like/${post_box.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        like: like
+                    }),
+                    headers: {"X-CSRFToken": csrftoken}
+                })
+                .then(response => {
+                    if (response.status === 404) {
+                    throw new Error("Object not found");
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    const likes = result["likes"];
+                    p.innerHTML = p_text;
+                    p.innerHTML += likes;
+                });
+            }
+        });
+    </script>
+{% endblock %}
